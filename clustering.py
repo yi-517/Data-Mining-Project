@@ -1,11 +1,17 @@
 import jieba
 import numpy as np
+from _DPC import DPC
 
 from sklearn.feature_extraction.text import TfidfTransformer
 from sklearn.feature_extraction.text import CountVectorizer
 
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.metrics.pairwise import cosine_distances
+
 from sklearn.decomposition import PCA
 from sklearn.cluster import KMeans, DBSCAN, Birch
+
+from sklearn.metrics import silhouette_score
 
 import matplotlib.pyplot as plt
 from stylecloud import gen_stylecloud
@@ -43,43 +49,51 @@ for wordList in splitData:
 vectorizer = CountVectorizer()
 transformer = TfidfTransformer()
 tfidf = transformer.fit_transform(vectorizer.fit_transform(corpus))
-print(type(tfidf))
 
 pca = PCA(n_components=2)
 X = pca.fit_transform(tfidf.A)
 
 n_clusters = 5
 
-# km = KMeans(n_clusters=5)
-# labels = km.fit_predict(X)
+km = KMeans(n_clusters=5)
+labels = km.fit_predict(X)
 
-# db = DBSCAN(eps=0.1, min_samples=3, metric="cosine")
+# db = DBSCAN(eps=0.05, min_samples=5, metric="cosine")
 # labels = db.fit_predict(X)
 
-birch = Birch(n_clusters=n_clusters)
-labels = birch.fit_predict(tfidf.A)
+# birch = Birch(n_clusters=n_clusters)
+# labels = birch.fit_predict(tfidf.A)
+
+# cosine_sim = cosine_distances(X)
+#
+# dpc = DPC(density="gauss", d_c_ratio=0.1, distance="precomputed")
+# labels = dpc.fit_predict(X=cosine_sim)
+
+score = silhouette_score(tfidf.A, labels)
 
 clusters = [[] for i in range(n_clusters)]
 words_in_clusters = [[] for i in range(n_clusters)]
 for i, l in enumerate(labels):
     for word in splitData[i]:
-        words_in_clusters[l].append(word)
-    clusters[l].append(titles[i]+"->"+urls[i])
+        words_in_clusters[l%n_clusters].append(word)
+    clusters[l%n_clusters].append(titles[i]+"->"+urls[i])
 
 i = 1
 for cluster in clusters:
-    print(f"-------------cluster {i}--------------")
+    print(f"-======================cluster {i}========================")
     for website in cluster:
         print(website)
     i += 1
 
+print("=====================silhouette_score======================")
+print(score)
 
 for index, words in enumerate(words_in_clusters):
     gen_stylecloud(text=' '.join(words),
                    # icon_name='fas fa-apple-whole',
                    font_path='msyh.ttc',
                    background_color='white',
-                   output_name='cloud'+str(index)+'.jpg',
+                   output_name='kmeans_cloud'+str(index)+'.jpg',
                    )
 
 fig, ax = plt.subplots()
